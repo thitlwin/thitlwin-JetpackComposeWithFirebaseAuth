@@ -1,14 +1,10 @@
 package com.thit.firebaseauthentication
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.thit.firebaseauthentication.ui.login.AuthViewModel
-import com.thit.firebaseauthentication.ui.theme.AppTheme
-import com.thit.firebaseauthentication.ui.login.LoginHomeScreen
+import com.thit.firebaseauthentication.ui.login.LoginActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -17,13 +13,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        setContent {
-            val authViewModel: AuthViewModel = viewModel()
-            AppTheme {
-                LoginHomeScreen(
-                    authUiState = authViewModel.uiState.collectAsState().value,
-                    onEvent = { authViewModel.onEvent(it) })
-            }
-        }
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
     }
 }

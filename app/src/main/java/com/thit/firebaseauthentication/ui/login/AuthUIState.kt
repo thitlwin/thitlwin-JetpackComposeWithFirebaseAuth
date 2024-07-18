@@ -3,6 +3,7 @@ package com.thit.firebaseauthentication.ui.login
 import com.google.firebase.auth.FirebaseUser
 
 data class AuthUiState(
+    val alreadySignUp: Boolean = false,
     val isAnonymous: Boolean = false,
     val isAuthenticated: Boolean = false,
     val user: FirebaseUser? = null,

@@ -16,7 +16,6 @@ class AuthRepositoryImpl @Inject constructor(
     private val firebaseAuth: FirebaseAuth
 ) : AuthRepository {
     override fun getAuthState(viewModelScope: CoroutineScope): AuthStateResponse = callbackFlow {
-
         val authStateListener = AuthStateListener { auth ->
             trySend(auth.currentUser)
             Log.i("TAG", "User: ${auth.currentUser?.uid ?: "Not authenticated"}")
@@ -29,6 +28,19 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), firebaseAuth.currentUser)
 
+    override suspend fun signUp(email: String, password: String): FirebaseSignUpResponse {
+        return try {
+            val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+            result?.user?.let {
+                Log.d("TAG", "Firebase SignUp Success: Email UID: ${it.uid}")
+                Log.i("TAG", "isUserVerified: ${it.isEmailVerified}")
+            }
+            SafeResult.Success(result)
+        } catch (error: Exception) {
+            SafeResult.Error(error)
+        }
+    }
+
     override suspend fun signInWithEmailAndPassword(
         email: String,
         password: String
@@ -37,6 +49,8 @@ class AuthRepositoryImpl @Inject constructor(
             val authResult = firebaseAuth.signInWithEmailAndPassword(email, password).await()
             authResult?.user?.let { user ->
                 Log.i("TAG", "FirebaseAuthSuccess: Email UID: ${user.uid}")
+                Log.i("TAG", "isUserVerified: ${user.isEmailVerified}")
+
             }
             SafeResult.Success(authResult)
         }catch (error: Exception) {
@@ -50,6 +64,7 @@ class AuthRepositoryImpl @Inject constructor(
             val authResult = firebaseAuth.signInAnonymously().await()
             authResult?.user?.let { user ->
                 Log.i("TAG", "FirebaseAuthSuccess: Anonymous UID: ${user.uid}")
+                Log.i("TAG", "isUserVerified: ${user.isEmailVerified}")
             }
             SafeResult.Success(authResult)
         } catch (error: Exception) {

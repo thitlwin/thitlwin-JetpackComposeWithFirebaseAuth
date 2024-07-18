@@ -1,7 +1,6 @@
-package com.thit.firebaseauthentication.ui.login
+package com.thit.firebaseauthentication.ui.signup
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.BorderStroke
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -11,9 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Facebook
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -21,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -29,36 +27,47 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.thit.firebaseauthentication.ui.theme.AppTheme
 import com.thit.firebaseauthentication.R
+import com.thit.firebaseauthentication.ui.login.AuthUIEvent
+import com.thit.firebaseauthentication.ui.login.AuthViewModel
 
 @Composable
-fun LoginScreen(
-    onRegisterClick: () -> Unit,
+fun SignupScreen(
     onEvent: (AuthUIEvent) -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginClick: () -> Unit,
+    onSignUpSuccess: (email: String) -> Unit
 ) {
     val authViewModel = viewModel<AuthViewModel>()
     val authUiState = authViewModel.uiState.collectAsState().value
-    if (authUiState.authState == AuthState.Authenticated || authUiState.authState == AuthState.SignedIn) {
-        onLoginSuccess()
-    }
+
     Scaffold { paddingValues ->
 
         //TextFields
-        var email by remember { mutableStateOf(TextFieldValue("koko@gmail.com")) }
+        var email by remember { mutableStateOf(TextFieldValue("saithitlwin+1@gmail.com")) }
         var password by remember { mutableStateOf(TextFieldValue("abcd1234")) }
+        var confirmPassword by remember { mutableStateOf(TextFieldValue("abcd1234")) }
         var hasError by remember { mutableStateOf(authUiState.error != null) }
         var passwordVisualTransformation by remember {
             mutableStateOf<VisualTransformation>(
                 PasswordVisualTransformation()
             )
         }
+        var confirmPasswordVisualTransformation by remember {
+            mutableStateOf<VisualTransformation>(
+                PasswordVisualTransformation()
+            )
+        }
         val passwordInteractionState = remember { MutableInteractionSource() }
+        val confirmPasswordInteractionState = remember { MutableInteractionSource() }
         val emailInteractionState = remember { MutableInteractionSource() }
-
+        if (authUiState.alreadySignUp) {
+            onSignUpSuccess(email.text)
+        }
+        if(authUiState.error != null) {
+            Toast.makeText(LocalContext.current, authUiState.error.message, Toast.LENGTH_SHORT).show()
+        }
         LazyColumn(
             verticalArrangement = Arrangement.Center,
             modifier = Modifier
@@ -69,7 +78,7 @@ fun LoginScreen(
             item { Spacer(modifier = Modifier.height(20.dp)) }
             item {
                 Text(
-                    text = "Login",
+                    text = "Sign Up",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -145,13 +154,56 @@ fun LoginScreen(
                 )
             }
             item {
+                OutlinedTextField(
+                    value = confirmPassword,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "Confirm Password",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.baseline_remove_red_eye_24),
+                            contentDescription = "Eye",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable(onClick = {
+                                confirmPasswordVisualTransformation =
+                                    if (confirmPasswordVisualTransformation != VisualTransformation.None) {
+                                        VisualTransformation.None
+                                    } else {
+                                        PasswordVisualTransformation()
+                                    }
+                            }
+                            )
+                        )
+
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = MaterialTheme.colorScheme.primary),
+                    maxLines = 1,
+                    isError = hasError,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    label = { Text(text = "Confirm Password") },
+                    onValueChange = {
+                        confirmPassword = it
+                    },
+                    interactionSource = confirmPasswordInteractionState,
+                    visualTransformation = confirmPasswordVisualTransformation,
+                )
+            }
+            item {
                 Button(
                     onClick = {
-                        if (invalidInput(email.text, password.text)) {
+                        if (invalidInput(email.text, password.text, confirmPassword.text)) {
                             hasError = true
                         } else {
                             hasError = false
-                            onEvent(AuthUIEvent.SignIn(email.text, password.text))
+                            onEvent(AuthUIEvent.SignUp(email.text, password.text))
                         }
                     },
                     modifier = Modifier
@@ -165,7 +217,7 @@ fun LoginScreen(
                             color = Color.White
                         )
                     } else {
-                        Text(text = "Log In")
+                        Text(text = "Register")
                     }
                 }
             }
@@ -190,53 +242,11 @@ fun LoginScreen(
             }
 
             item {
-                OutlinedButton(
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    onClick = { }, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Facebook,
-                        contentDescription = "Facebook"
-                    )
-                    Text(
-                        text = "Sign in with Facebook",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 14.sp),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.height(8.dp)) }
-
-            item {
-                OutlinedButton(
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    onClick = { }, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Mail,
-                        contentDescription = "Gmail"
-                    )
-                    Text(
-                        text = "Sign in with Gmail",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 14.sp),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-
-            item {
                 val primaryColor = MaterialTheme.colorScheme.primary
                 val annotatedString = remember {
-                    AnnotatedString.Builder("Don't have an account? Register")
+                    AnnotatedString.Builder("Already have account? Login")
                         .apply {
-                            addStyle(style = SpanStyle(color = primaryColor), 23, 31)
+                            addStyle(style = SpanStyle(color = primaryColor), 22, 27)
                         }
                 }
                 Text(
@@ -244,7 +254,7 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 16.dp)
-                        .clickable(onClick = onRegisterClick),
+                        .clickable(onClick = onLoginClick),
                     textAlign = TextAlign.Center
                 )
             }
@@ -254,42 +264,17 @@ fun LoginScreen(
     }
 }
 
-//@SuppressLint("UnusedCrossfadeTargetStateParameter")
-//@Composable
-//fun LoginHomeScreen(
-//    authUiState: AuthUiState,
-//    onEvent: (AuthUIEvent) -> Unit
-//) {
-//    var loggedIn by remember { mutableStateOf(false) }
-//    val coroutineScope = rememberCoroutineScope()
-//    Crossfade(targetState = loggedIn) {
-//        if (authUiState.authState == AuthState.Authenticated || authUiState.authState == AuthState.SignedIn) {
-//            HomeScreen()
-//        } else {
-//            LoginScreen(
-//                onRegisterClick = {
-//                    SignupScreen(onEvent = {}) {
-//
-//                    }
-//                },
-//                onEvent = onEvent
-//            ) {
-//                coroutineScope.launch {
-//                    delay(2000)
-//                    loggedIn = true
-//                }
-//            }
-//        }
-//    }
-//}
 
-fun invalidInput(email: String, password: String) =
-    email.isBlank() || password.isBlank()
+fun invalidInput(email: String, password: String, confirmPassword: String): Boolean {
+    if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) return true
+    if (confirmPassword != password) return true
+    return false
+}
 
 @Preview
 @Composable
-fun LoginScreenPreview() {
+fun SignupScreenPreview() {
     AppTheme {
-        LoginScreen(onRegisterClick = {}, onEvent = {}) {}
+        SignupScreen(onEvent = {}, onSignUpSuccess = {}, onLoginClick = {})
     }
 }
