@@ -1,6 +1,6 @@
 package com.thit.firebaseauthentication.ui.login
 
-import androidx.compose.animation.Crossfade
+import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Facebook
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material3.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -31,8 +30,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.thit.firebaseauthentication.ui.theme.AppTheme
 import com.thit.firebaseauthentication.R
+import com.thit.firebaseauthentication.ui.login.component.SignInWithGoogle
+import java.security.MessageDigest
+import java.util.UUID
 
 @Composable
 fun LoginScreen(
@@ -45,6 +48,8 @@ fun LoginScreen(
     if (authUiState.authState == AuthState.Authenticated || authUiState.authState == AuthState.SignedIn) {
         onLoginSuccess()
     }
+
+
     Scaffold { paddingValues ->
 
         //TextFields
@@ -190,45 +195,13 @@ fun LoginScreen(
             }
 
             item {
-                OutlinedButton(
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    onClick = { }, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Facebook,
-                        contentDescription = "Facebook"
-                    )
-                    Text(
-                        text = "Sign in with Facebook",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 14.sp),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                SignInWithGoogle(authViewModel)
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
-                OutlinedButton(
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                    onClick = { }, modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Mail,
-                        contentDescription = "Gmail"
-                    )
-                    Text(
-                        text = "Sign in with Gmail",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontSize = 14.sp),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                SignInWithFacebook()
             }
 
             item {
@@ -254,34 +227,45 @@ fun LoginScreen(
     }
 }
 
-//@SuppressLint("UnusedCrossfadeTargetStateParameter")
-//@Composable
-//fun LoginHomeScreen(
-//    authUiState: AuthUiState,
-//    onEvent: (AuthUIEvent) -> Unit
-//) {
-//    var loggedIn by remember { mutableStateOf(false) }
-//    val coroutineScope = rememberCoroutineScope()
-//    Crossfade(targetState = loggedIn) {
-//        if (authUiState.authState == AuthState.Authenticated || authUiState.authState == AuthState.SignedIn) {
-//            HomeScreen()
-//        } else {
-//            LoginScreen(
-//                onRegisterClick = {
-//                    SignupScreen(onEvent = {}) {
-//
-//                    }
-//                },
-//                onEvent = onEvent
-//            ) {
-//                coroutineScope.launch {
-//                    delay(2000)
-//                    loggedIn = true
-//                }
-//            }
-//        }
-//    }
-//}
+fun getGoogleIdOption(context: Context): GetGoogleIdOption {
+
+    val rawNonce = UUID.randomUUID().toString()
+    val bytes = rawNonce.toByteArray()
+    val md = MessageDigest.getInstance("SHA-256")
+    val digest = md.digest(bytes)
+    val hashedNonce = digest.fold("") { str, it ->
+        str + "%02x".format(it)
+    }
+    return GetGoogleIdOption.Builder()
+        .setFilterByAuthorizedAccounts(false) // true - check if the user has any accounts that have previously been used to sign in to your app
+        .setServerClientId(context.getString(R.string.web_client_id))
+        .setAutoSelectEnabled(true) // true- Enable automatic sign-in for returning users
+        .setNonce(hashedNonce)
+        .build()
+}
+
+
+@Composable
+private fun SignInWithFacebook() {
+    OutlinedButton(
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+        onClick = { }, modifier = Modifier
+            .fillMaxWidth()
+            .height(50.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Facebook,
+            contentDescription = "Facebook"
+        )
+        Text(
+            text = "Sign in with Facebook",
+            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 14.sp),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
 
 fun invalidInput(email: String, password: String) =
     email.isBlank() || password.isBlank()

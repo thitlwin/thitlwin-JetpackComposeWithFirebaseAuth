@@ -10,6 +10,7 @@ plugins {
 android {
     namespace = "com.thit.firebaseauthentication"
     compileSdk = 34
+//    compileSdkPreview = "VanillaIceCream"
 
     defaultConfig {
         applicationId = "com.thit.firebaseauthentication"
@@ -75,6 +76,13 @@ dependencies {
     implementation(libs.ui.tooling.preview)
     implementation(libs.hilt.android)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
+//    implementation(libs.play.services.auth)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
