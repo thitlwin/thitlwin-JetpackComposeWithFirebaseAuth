@@ -195,7 +195,7 @@ fun LoginScreen(
             }
 
             item {
-                SignInWithGoogle(authViewModel)
+                SignInWithGoogle()
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -226,24 +226,6 @@ fun LoginScreen(
         }
     }
 }
-
-fun getGoogleIdOption(context: Context): GetGoogleIdOption {
-
-    val rawNonce = UUID.randomUUID().toString()
-    val bytes = rawNonce.toByteArray()
-    val md = MessageDigest.getInstance("SHA-256")
-    val digest = md.digest(bytes)
-    val hashedNonce = digest.fold("") { str, it ->
-        str + "%02x".format(it)
-    }
-    return GetGoogleIdOption.Builder()
-        .setFilterByAuthorizedAccounts(false) // true - check if the user has any accounts that have previously been used to sign in to your app
-        .setServerClientId(context.getString(R.string.web_client_id))
-        .setAutoSelectEnabled(true) // true- Enable automatic sign-in for returning users
-        .setNonce(hashedNonce)
-        .build()
-}
-
 
 @Composable
 private fun SignInWithFacebook() {

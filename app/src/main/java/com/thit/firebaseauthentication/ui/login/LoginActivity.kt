@@ -26,7 +26,16 @@ class LoginActivity : ComponentActivity() {
                     },
                     onEvent = authViewModel::onEvent,
                     onLoginSuccess = {
-                        startActivity(HomeActivity.newInstance(this))
+                        val user = authViewModel.uiState.value.user
+
+                        startActivity(
+                            HomeActivity.newInstance(
+                                this,
+                                email = user?.email,
+                                name = user?.displayName,
+                                imageUrl = user?.photoUrl?.toString()
+                            )
+                        )
                         finish()
                     },
                 )

@@ -10,18 +10,36 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class HomeActivity : ComponentActivity() {
+    val email: String by lazy {
+        intent.getStringExtra(KEY_EMAIL) ?: ""
+    }
+    val name: String by lazy {
+        intent.getStringExtra(KEY_NAME) ?: ""
+    }
+    val imageUrl: String by lazy {
+        intent.getStringExtra(KEY_IMAGE_URL) ?: ""
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             AppTheme {
-                HomeScreen()
+                HomeScreen(name = name, imageUrl = imageUrl, email = email)
             }
         }
     }
 
     companion object {
-        fun newInstance(context: Context) = Intent(context, HomeActivity::class.java)
+        const val KEY_NAME = "NAME"
+        const val KEY_EMAIL = "EMAIL"
+        const val KEY_IMAGE_URL = "IMAGE_URL"
+
+        fun newInstance(context: Context, name: String?, email: String?, imageUrl: String?) =
+            Intent(context, HomeActivity::class.java).apply {
+                putExtra(KEY_NAME, name)
+                putExtra(KEY_EMAIL, email)
+                putExtra(KEY_IMAGE_URL, imageUrl)
+            }
     }
 }

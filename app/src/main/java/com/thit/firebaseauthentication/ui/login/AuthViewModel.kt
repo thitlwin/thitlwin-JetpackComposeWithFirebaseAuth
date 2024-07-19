@@ -1,14 +1,8 @@
 package com.thit.firebaseauthentication.ui.login
 
-import android.content.Context
 import android.util.Log
-import android.widget.Toast
-import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
-import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
-import androidx.credentials.PasswordCredential
-import androidx.credentials.PublicKeyCredential
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.viewModelScope
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -80,11 +74,7 @@ class AuthViewModel @Inject constructor(
             AuthUIEvent.SignOut -> signOut()
             is AuthUIEvent.SignIn -> signIn(event.email, event.password)
             is AuthUIEvent.SignUp -> signUp(event.email, event.password)
-            is AuthUIEvent.SignInWithGoogle -> signInWithGoogle(
-                event.credentialManager,
-                event.request,
-                event.context
-            )
+            is AuthUIEvent.HandleSignInResult -> handleSignIn(event.result)
         }
     }
 
@@ -139,25 +129,7 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private fun signInWithGoogle(
-        credentialManager: CredentialManager,
-        request: GetCredentialRequest,
-        context: Context
-    ) {
-        viewModelScope.launch {
-            try {
-                val result = credentialManager.getCredential(
-                    request = request,
-                    context = context,
-                )
-                handleSignIn(result, context)
-            } catch (e: GetCredentialException) {
-                handleFailure(e)
-            }
-        }
-    }
-
-    suspend fun handleSignIn(result: GetCredentialResponse, context: Context) {
+    suspend fun handleSignIn(result: GetCredentialResponse) {
         // Handle the successfully returned credential.
         val credential = result.credential
 
@@ -171,17 +143,23 @@ class AuthViewModel @Inject constructor(
                         val googleIdTokenCredential = GoogleIdTokenCredential
                             .createFrom(credential.data)
                         val googleIdToken = googleIdTokenCredential.idToken
-                        val googleCredentials =
+
+                        val authCredential =
                             GoogleAuthProvider.getCredential(googleIdToken, null)
                         val user =
-                            Firebase.auth.signInWithCredential(googleCredentials).await().user
+                            Firebase.auth.signInWithCredential(authCredential).await().user
 
                         user?.run {
-                            Toast.makeText(
-                                context,
-                                "You're signed in! as $displayName",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            updateUiState {
+                                AuthUiState(
+                                    alreadySignUp = true,
+                                    isLoading = false,
+                                    user = user,
+                                    isAnonymous = user.isAnonymous,
+                                    isAuthenticated = true,
+                                    authState = if (user.isAnonymous) AuthState.Authenticated else AuthState.SignedIn
+                                )
+                            }
                         }
                     } catch (e: GoogleIdTokenParsingException) {
                         Log.e("TAG", "Received an invalid google id token response", e)

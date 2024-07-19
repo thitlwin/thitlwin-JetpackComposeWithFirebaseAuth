@@ -3,8 +3,6 @@ package com.thit.firebaseauthentication.ui.login.component
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
-import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
@@ -27,27 +25,24 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
-import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
-import androidx.credentials.GetCredentialResponse
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.thit.firebaseauthentication.R
+import com.thit.firebaseauthentication.ui.login.AuthUIEvent
 import com.thit.firebaseauthentication.ui.login.AuthViewModel
-import com.thit.firebaseauthentication.ui.login.getGoogleIdOption
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import java.security.MessageDigest
+import java.util.UUID
 
 
 const val TAG = "GoogleAuth"
 
 @Composable
-fun SignInWithGoogle(authViewModel: AuthViewModel) {
+fun SignInWithGoogle() {
     SignInWithGoogleButton()
 }
 
@@ -55,17 +50,19 @@ fun SignInWithGoogle(authViewModel: AuthViewModel) {
 private fun SignInWithGoogleButton() {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val authViewModel = viewModel<AuthViewModel>()
 
     val startAddAccountIntentLauncher =
         rememberLauncherForActivityResult(contract = ActivityResultContracts.StartActivityForResult()) {
             // Once the account has been added, do sign in again.
-            doGoogleSignIn(coroutineScope, context, null)
+            doGoogleSignIn(authViewModel, coroutineScope, context, null)
         }
 
     OutlinedButton(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         onClick = {
             doGoogleSignIn(
+                authViewModel,
                 coroutineScope,
                 context,
                 startAddAccountIntentLauncher
@@ -89,12 +86,30 @@ private fun SignInWithGoogleButton() {
 }
 
 private fun doGoogleSignIn(
+    authViewModel: AuthViewModel,
     coroutineScope: CoroutineScope,
     context: Context,
     startAddAccountIntentLauncher: ManagedActivityResultLauncher<Intent, ActivityResult>?,
 ) {
 
     val credentialManager = CredentialManager.create(context)
+
+    fun getGoogleIdOption(context: Context): GetGoogleIdOption {
+
+        val rawNonce = UUID.randomUUID().toString()
+        val bytes = rawNonce.toByteArray()
+        val md = MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        val hashedNonce = digest.fold("") { str, it ->
+            str + "%02x".format(it)
+        }
+        return GetGoogleIdOption.Builder()
+            .setFilterByAuthorizedAccounts(false) // true - check if the user has any accounts that have previously been used to sign in to the app
+            .setServerClientId(context.getString(R.string.web_client_id))
+            .setAutoSelectEnabled(true) // true- Enable automatic sign-in for returning users
+            .setNonce(hashedNonce)
+            .build()
+    }
 
     val googleSignRequest: GetCredentialRequest = GetCredentialRequest.Builder()
         .addCredentialOption(getGoogleIdOption(context))
@@ -106,54 +121,13 @@ private fun doGoogleSignIn(
                 request = googleSignRequest,
                 context = context,
             )
-            handleSignIn(result, context)
+            authViewModel.onEvent(AuthUIEvent.HandleSignInResult(result))
         } catch (e: NoCredentialException) {
             e.printStackTrace()
             // if there is no credential, request to add google account
             startAddAccountIntentLauncher?.launch(getAddGoogleAccountIntent())
         } catch (e: GetCredentialException) {
             e.printStackTrace()
-        }
-    }
-}
-
-suspend fun handleSignIn(result: GetCredentialResponse, context: Context) {
-    // Handle the successfully returned credential.
-    val credential = result.credential
-
-    when (credential) {
-        // GoogleIdToken credential
-        is CustomCredential -> {
-            if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                try {
-                    // Use googleIdTokenCredential and extract id to validate and
-                    // authenticate on your server.
-                    val googleIdTokenCredential = GoogleIdTokenCredential
-                        .createFrom(credential.data)
-                    val googleIdToken = googleIdTokenCredential.idToken
-                    val googleCredentials =
-                        GoogleAuthProvider.getCredential(googleIdToken, null)
-                    val user =
-                        Firebase.auth.signInWithCredential(googleCredentials).await().user
-
-                    user?.run {
-                        Toast.makeText(
-                            context,
-                            "You're signed in! as $displayName",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                } catch (e: GoogleIdTokenParsingException) {
-                    Log.e("TAG", "Received an invalid google id token response", e)
-                } catch (e: Exception) {
-                    Log.e("TAG", "Unexpected error")
-                }
-            }
-        }
-
-        else -> {
-            // Catch any unrecognized credential type here.
-            Log.e("TAG", "Unexpected type of credential")
         }
     }
 }
